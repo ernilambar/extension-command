@@ -66,6 +66,8 @@ abstract class CommandWithUpgrade extends \WP_CLI_Command {
 
 	abstract protected function install_from_repo( $slug, $assoc_args );
 
+	protected function install_dependencies( $slug ) { }
+
 	public function status( $args ) {
 		// Force WordPress to check for updates.
 		call_user_func( $this->upgrade_refresh );
@@ -227,6 +229,12 @@ abstract class CommandWithUpgrade extends \WP_CLI_Command {
 				} else {
 					++$successes;
 				}
+			}
+
+			$with_dependencies = Utils\get_flag_value( $assoc_args, 'with-dependencies' );
+
+			if ( true === $with_dependencies ) {
+				$this->install_dependencies( $slug );
 			}
 
 			// Check extension is available or not.

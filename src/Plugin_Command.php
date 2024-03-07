@@ -847,6 +847,9 @@ class Plugin_Command extends \WP_CLI\CommandWithUpgrade {
 	 * [--activate-network]
 	 * : If set, the plugin will be network activated immediately after install
 	 *
+	 * [--with-dependencies]
+	 * : Install dependencies also.
+	 *
 	 * [--insecure]
 	 * : Retry downloads without certificate validation if TLS handshake fails. Note: This makes the request vulnerable to a MITM attack.
 	 *
@@ -1400,5 +1403,41 @@ class Plugin_Command extends \WP_CLI\CommandWithUpgrade {
 		}
 
 		return ! WP_CLI::launch( $command . escapeshellarg( $path ), false );
+	}
+
+	protected function install_dependencies( $slug ) {
+		if( ! function_exists('get_plugin_data') ){
+			require_once( ABSPATH . 'wp-admin/includes/plugin.php' );
+		}
+
+		$details = $this->fetcher->get( $slug );
+
+		if ( ! $details ) {
+			return;
+		}
+
+		$plugin_data = get_plugin_data( $details->file );
+
+		$requires_plugins = ( isset( $plugin_data['RequiresPlugins'] ) && ! empty( $plugin_data['RequiresPlugins'] ) ) ? $plugin_data['RequiresPlugins'] : '';
+
+		if ( empty( $requires_plugins ) ) {
+			return;
+		}
+
+		$dependencies = wp_parse_list( $requires_plugins );
+
+		if ( ! empty( $dependencies ) ) {
+			foreach ( $dependencies as $dep ) {
+				$process = WP_CLI::runcommand(
+					"plugin install {$dep} --activate",
+					[
+						'return'     => 'all',
+						'exit_error' => false,
+					]
+				);
+
+				WP_CLI::line( $process->stdout );
+			}
+		}
 	}
 }
