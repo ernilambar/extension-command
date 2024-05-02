@@ -318,6 +318,9 @@ class Plugin_Command extends \WP_CLI\CommandWithUpgrade {
 	 * [--network]
 	 * : If set, the plugin will be activated for the entire multisite network.
 	 *
+	* [--recently-active]
+	 * : If set, only recently active plugins will be activated.
+	 *
 	 * ## EXAMPLES
 	 *
 	 *     # Activate plugin
@@ -331,11 +334,12 @@ class Plugin_Command extends \WP_CLI\CommandWithUpgrade {
 	 *     Success: Network activated 1 of 1 plugins.
 	 */
 	public function activate( $args, $assoc_args = array() ) {
-		$network_wide = Utils\get_flag_value( $assoc_args, 'network', false );
-		$all          = Utils\get_flag_value( $assoc_args, 'all', false );
-		$all_exclude  = Utils\get_flag_value( $assoc_args, 'exclude' );
+		$network_wide    = Utils\get_flag_value( $assoc_args, 'network', false );
+		$all             = Utils\get_flag_value( $assoc_args, 'all', false );
+		$all_exclude     = Utils\get_flag_value( $assoc_args, 'exclude' );
+		$recently_active = Utils\get_flag_value( $assoc_args, 'recently-active', false );
 
-		$args = $this->check_optional_args_and_all( $args, $all, 'activate', $all_exclude );
+		$args = $this->check_optional_args_and_all( $args, $all, 'activate', $all_exclude, $recently_active );
 		if ( ! $args ) {
 			return;
 		}

@@ -12,35 +12,47 @@ trait ParsePluginNameInput {
 	 * @param array  $args Passed-in arguments.
 	 * @param bool   $all All flag.
 	 * @param string $verb Optional. Verb to use. Defaults to 'install'.
-	 * @return array Same as $args if not all, otherwise all slugs.
 	 * @param string $exclude Comma separated list of plugin slugs.
+	 * @param bool $recently_active Whether to use only recently active plugins.
+	 * @return array Same as $args if not all, otherwise all slugs.
 	 * @throws ExitException If neither plugin name nor --all were provided.
 	 */
-	protected function check_optional_args_and_all( $args, $all, $verb = 'install', $exclude = null ) {
-		if ( $all ) {
+	protected function check_optional_args_and_all( $args, $all, $verb = 'install', $exclude = null, $recently_active = false ) {
+		if ( $recently_active ) {
 			$args = array_map(
 				'\WP_CLI\Utils\get_plugin_name',
-				array_keys( $this->get_all_plugins() )
+				array_keys( $this->get_all_recently_active_plugins() )
 			);
-		}
+		} else {
+			if ( $all ) {
+				$args = array_map(
+					'\WP_CLI\Utils\get_plugin_name',
+					array_keys( $this->get_all_plugins() )
+				);
+			}
 
-		if ( $all && $exclude ) {
-			$exclude_list = explode( ',', trim( $exclude, ',' ) );
-			$args         = array_filter(
-				$args,
-				static function ( $slug ) use ( $exclude_list ) {
-					return ! in_array( $slug, $exclude_list, true );
-				}
-			);
+			if ( $all && $exclude ) {
+				$exclude_list = explode( ',', trim( $exclude, ',' ) );
+				$args         = array_filter(
+					$args,
+					static function ( $slug ) use ( $exclude_list ) {
+						return ! in_array( $slug, $exclude_list, true );
+					}
+				);
+			}
 		}
 
 		if ( empty( $args ) ) {
-			if ( ! $all ) {
-				WP_CLI::error( 'Please specify one or more plugins, or use --all.' );
-			}
+			if ( $recently_active ) {
+				WP_CLI::success( 'No recently active plugins found.' );
+			} else {
+				if ( ! $all ) {
+					WP_CLI::error( 'Please specify one or more plugins, or use --all.' );
+				}
 
-			$past_tense_verb = Utils\past_tense_verb( $verb );
-			WP_CLI::success( "No plugins {$past_tense_verb}." ); // Don't error if --all given for BC.
+				$past_tense_verb = Utils\past_tense_verb( $verb );
+				WP_CLI::success( "No plugins {$past_tense_verb}." ); // Don't error if --all given for BC.
+			}
 		}
 
 		return $args;
@@ -57,5 +69,11 @@ trait ParsePluginNameInput {
 	private function get_all_plugins() {
 		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Calling native WordPress hook.
 		return apply_filters( 'all_plugins', get_plugins() );
+	}
+
+	private function get_all_recently_active_plugins() {
+		$recently_active = is_network_admin() ? get_site_option( 'recently_activated' ) : get_option( 'recently_activated' );
+
+		return ( false !== $recently_active ) ? array_filter( $recently_active ) : [];
 	}
 }
